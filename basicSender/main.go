@@ -1,8 +1,11 @@
 package main
 
 import (
-    "log"
-   amqp"github.com/rabbitmq/amqp091-go"
+	"log"
+	"context"
+    "time"
+
+	amqp "github.com/rabbitmq/amqp091-go"
 )
 
 
@@ -22,5 +25,30 @@ func main()  {
     channel, e := conn.Channel()
     handleError(e, "Fetching channel failed ")
     defer channel.Close()
-
+    testQueue, err := channel.QueueDeclare(
+        "test",
+        false,
+        false,
+        false,
+        false,
+        nil,
+    )
+    handleError(err, "Queue Creation failed")
+    serverTime := time.Now()
+    message := amqp.Publishing{
+        ContentType: "text/plain",
+        Body: []byte(serverTime.String()),
+    }
+    ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+    defer cancel()
+    err = channel.PublishWithContext(
+        ctx,
+        "",
+        testQueue.Name,
+        false,
+        false,
+        message,
+    )
+    handleError(err, "Failed publishing the msg")
+    log.Println("SuccesFully published a message to the queue")
 }
